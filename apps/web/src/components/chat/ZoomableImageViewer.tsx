@@ -7,6 +7,7 @@ import { useZoomableImage } from "./useZoomableImage";
 export interface ZoomableImageViewerProps {
   readonly src: string;
   readonly alt: string;
+  readonly layout?: "dialog" | "panel";
   readonly className?: string;
   readonly style?: CSSProperties;
   readonly onError?: () => void;
@@ -16,6 +17,7 @@ export interface ZoomableImageViewerProps {
 export const ZoomableImageViewer = memo(function ZoomableImageViewer({
   src,
   alt,
+  layout = "dialog",
   className,
   style,
   onError,
@@ -41,8 +43,15 @@ export const ZoomableImageViewer = memo(function ZoomableImageViewer({
     zoomPercentage,
   } = useZoomableImage(src);
 
+  const isPanel = layout === "panel";
+
   return (
-    <div className="relative flex flex-col items-center justify-center">
+    <div
+      className={cn(
+        "relative flex items-center justify-center",
+        isPanel ? "h-full w-full min-h-0 flex-1 flex-col overflow-hidden" : "flex-col",
+      )}
+    >
       {/* Zoomable Image Viewport */}
       <div
         ref={containerRef}
@@ -53,7 +62,10 @@ export const ZoomableImageViewer = memo(function ZoomableImageViewer({
         onPointerCancel={handlePointerUp}
         onDoubleClick={handleDoubleClick}
         className={cn(
-          "relative flex max-h-[82vh] max-w-[92vw] items-center justify-center overflow-hidden rounded-lg border border-border/70 bg-background/95 shadow-2xl transition-colors touch-none select-none",
+          "relative flex items-center justify-center overflow-hidden transition-colors touch-none select-none",
+          isPanel
+            ? "h-full w-full min-h-0 flex-1 rounded-md border border-border/40 bg-muted/10"
+            : "max-h-[82vh] max-w-[92vw] rounded-lg border border-border/70 bg-background/95 shadow-2xl",
           isDragging ? "cursor-grabbing" : isZoomed ? "cursor-grab" : "cursor-zoom-in",
           className,
         )}
@@ -64,7 +76,10 @@ export const ZoomableImageViewer = memo(function ZoomableImageViewer({
           alt={alt}
           draggable={false}
           onError={onError}
-          className="max-h-[82vh] max-w-[92vw] object-contain select-none will-change-transform"
+          className={cn(
+            "object-contain select-none will-change-transform",
+            isPanel ? "max-h-full max-w-full" : "max-h-[82vh] max-w-[92vw]",
+          )}
           style={{
             transform: `translate3d(${position.x}px, ${position.y}px, 0) scale(${scale}) rotate(${rotation}deg)`,
             transition: isDragging ? "none" : "transform 0.15s ease-out",
@@ -74,7 +89,10 @@ export const ZoomableImageViewer = memo(function ZoomableImageViewer({
 
       {/* Floating Interactive Toolbar */}
       <div
-        className="mt-3 flex items-center gap-1 rounded-full border border-border/80 bg-popover/90 px-2.5 py-1 text-foreground shadow-xl backdrop-blur-md"
+        className={cn(
+          "flex items-center gap-1 rounded-full border border-border/80 bg-popover/90 px-2.5 py-1 text-foreground shadow-xl backdrop-blur-md",
+          isPanel ? "absolute bottom-4 z-10" : "mt-3",
+        )}
         role="toolbar"
         aria-label="Image preview controls"
         onClick={(e) => e.stopPropagation()}

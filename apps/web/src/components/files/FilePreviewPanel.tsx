@@ -28,6 +28,7 @@ import { useAssetUrlRefresh, useAssetUrlState } from "~/assets/assetUrls";
 import { OpenInPicker } from "~/components/chat/OpenInPicker";
 import { PierreEntryIcon } from "~/components/chat/PierreEntryIcon";
 import { MediaVideoPlayer } from "~/components/media/MediaVideoPlayer";
+import { ZoomableImageViewer } from "~/components/chat/ZoomableImageViewer";
 import { MediaActions, type MediaActionSource } from "~/components/media/MediaActions";
 import { useRemoteOpenState } from "~/remoteOpen";
 import { useClientSettings } from "~/hooks/useSettings";
@@ -187,12 +188,12 @@ function WorkspaceImagePreview(props: {
   }
 
   return assetUrl._tag === "Success" && imageUrl !== null ? (
-    <div className="flex min-h-0 flex-1 items-center justify-center overflow-auto p-4">
+    <div className="relative flex min-h-0 flex-1 items-center justify-center overflow-hidden p-4">
       <MediaActions source={actionsSource}>
-        <img
-          className="max-h-full max-w-full object-contain"
+        <ZoomableImageViewer
           src={imageUrl}
           alt={props.alt}
+          layout="panel"
           onError={() => setFailedUrl(imageUrl)}
         />
       </MediaActions>
