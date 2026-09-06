@@ -10,6 +10,7 @@ import { MediaActions, type MediaActionSource } from "../media/MediaActions";
 import { MediaVideoPlayer } from "../media/MediaVideoPlayer";
 import { isContextMenuOpen } from "../../contextMenuFallback";
 import { composerFloatingLayerProps } from "./composerEventScope";
+import { ZoomableImageViewer } from "./ZoomableImageViewer";
 
 interface ExpandedImageDialogProps {
   preview: ExpandedImagePreview;
@@ -178,11 +179,9 @@ export const ExpandedImageDialog = memo(function ExpandedImageDialog({
               {openOriginalLink}
             </ExpandedMediaFailure>
           ) : (
-            <img
+            <ZoomableImageViewer
               src={item.src}
               alt={item.name}
-              className="max-h-[86vh] max-w-[92vw] select-none rounded-lg border border-border/70 bg-background object-contain shadow-2xl"
-              draggable={false}
               onError={() => setFailedImageSrc(item.src)}
             />
           )}
