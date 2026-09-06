@@ -7,8 +7,10 @@ import {
   getNextRotation,
   getNextZoomInScale,
   getNextZoomOutScale,
+  isEditableElement,
   MAX_ZOOM_SCALE,
   MIN_ZOOM_SCALE,
+  selectActiveViewer,
   ZOOM_STEP_FACTOR,
 } from "./zoomableImage.logic";
 
@@ -84,6 +86,93 @@ describe("zoomableImage.logic", () => {
       expect(getNextRotation(90)).toBe(180);
       expect(getNextRotation(180)).toBe(270);
       expect(getNextRotation(270)).toBe(0);
+    });
+  });
+
+  describe("isEditableElement", () => {
+    it("handles null/undefined gracefully", () => {
+      expect(isEditableElement(null)).toBe(false);
+    });
+
+    it("identifies elements with isContentEditable as editable", () => {
+      class MockHTMLElement {}
+      (globalThis as unknown as { HTMLElement: typeof MockHTMLElement }).HTMLElement =
+        MockHTMLElement;
+
+      const editableEl = Object.assign(new MockHTMLElement(), { isContentEditable: true });
+      expect(isEditableElement(editableEl as unknown as EventTarget)).toBe(true);
+
+      const nonEditableEl = Object.assign(new MockHTMLElement(), { isContentEditable: false });
+      expect(isEditableElement(nonEditableEl as unknown as EventTarget)).toBe(false);
+    });
+
+    it("identifies input, textarea, and select elements as editable", () => {
+      class MockHTMLInputElement {}
+      class MockHTMLTextAreaElement {}
+      class MockHTMLSelectElement {}
+
+      (
+        globalThis as unknown as { HTMLInputElement: typeof MockHTMLInputElement }
+      ).HTMLInputElement = MockHTMLInputElement;
+      (
+        globalThis as unknown as { HTMLTextAreaElement: typeof MockHTMLTextAreaElement }
+      ).HTMLTextAreaElement = MockHTMLTextAreaElement;
+      (
+        globalThis as unknown as { HTMLSelectElement: typeof MockHTMLSelectElement }
+      ).HTMLSelectElement = MockHTMLSelectElement;
+
+      expect(isEditableElement(new MockHTMLInputElement() as unknown as EventTarget)).toBe(true);
+      expect(isEditableElement(new MockHTMLTextAreaElement() as unknown as EventTarget)).toBe(true);
+      expect(isEditableElement(new MockHTMLSelectElement() as unknown as EventTarget)).toBe(true);
+    });
+  });
+
+  describe("selectActiveViewer", () => {
+    it("returns undefined when no viewers are registered", () => {
+      expect(selectActiveViewer([])).toBeUndefined();
+    });
+
+    it("returns the single mounted viewer", () => {
+      const viewer = { layout: "panel" as const };
+      expect(selectActiveViewer([viewer])).toBe(viewer);
+    });
+
+    it("prioritizes dialog viewers over panel viewers", () => {
+      const panel = { id: 1, layout: "panel" as const };
+      const dialog = { id: 2, layout: "dialog" as const };
+
+      // Even if panel is registered before or after, dialog wins
+      expect(selectActiveViewer([panel, dialog])).toBe(dialog);
+      expect(selectActiveViewer([dialog, panel])).toBe(dialog);
+    });
+
+    it("returns the topmost (most recent) dialog if multiple exist", () => {
+      const dialog1 = { id: 1, layout: "dialog" as const };
+      const dialog2 = { id: 2, layout: "dialog" as const };
+
+      expect(selectActiveViewer([dialog1, dialog2])).toBe(dialog2);
+    });
+
+    it("prioritizes a focused panel viewer when only panels exist", () => {
+      const focusedTarget = { id: "button" } as unknown as Node;
+      const container1 = {
+        contains: (target: Node | null) => target === focusedTarget,
+      };
+      const container2 = {
+        contains: () => false,
+      };
+
+      const panel1 = { id: 1, layout: "panel" as const, container: container1 };
+      const panel2 = { id: 2, layout: "panel" as const, container: container2 };
+
+      expect(selectActiveViewer([panel1, panel2], focusedTarget)).toBe(panel1);
+    });
+
+    it("falls back to the most recently registered viewer", () => {
+      const panel1 = { id: 1, layout: "panel" as const };
+      const panel2 = { id: 2, layout: "panel" as const };
+
+      expect(selectActiveViewer([panel1, panel2], null)).toBe(panel2);
     });
   });
 

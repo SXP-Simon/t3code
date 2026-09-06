@@ -58,9 +58,51 @@ export function getNextRotation(currentRotation: number): number {
  * Checks if keyboard event targets an editable element.
  */
 export function isEditableElement(target: EventTarget | null): boolean {
+  if (!target) return false;
   return (
-    target instanceof HTMLInputElement ||
-    target instanceof HTMLTextAreaElement ||
-    (target instanceof HTMLElement && target.isContentEditable)
+    (typeof HTMLInputElement !== "undefined" && target instanceof HTMLInputElement) ||
+    (typeof HTMLTextAreaElement !== "undefined" && target instanceof HTMLTextAreaElement) ||
+    (typeof HTMLSelectElement !== "undefined" && target instanceof HTMLSelectElement) ||
+    (typeof HTMLElement !== "undefined" &&
+      target instanceof HTMLElement &&
+      Boolean(target.isContentEditable))
   );
+}
+
+export interface ZoomableViewerTarget {
+  readonly layout: "dialog" | "panel";
+  readonly container?: { contains?: (other: Node | null) => boolean } | null;
+}
+
+/**
+ * Selects the active viewer that should receive keyboard shortcuts.
+ * Dialog viewers take precedence over panel viewers. When only panel
+ * viewers exist, the focused viewer or most recently registered viewer is chosen.
+ */
+export function selectActiveViewer<T extends ZoomableViewerTarget>(
+  viewers: readonly T[],
+  activeElement: Node | null = typeof document !== "undefined" ? document.activeElement : null,
+): T | undefined {
+  if (viewers.length === 0) return undefined;
+
+  // 1. If any dialog viewer is mounted, the topmost (last mounted) dialog receives shortcuts
+  for (let i = viewers.length - 1; i >= 0; i--) {
+    const viewer = viewers[i];
+    if (viewer && viewer.layout === "dialog") {
+      return viewer;
+    }
+  }
+
+  // 2. If focus is inside a panel viewer container, prioritize that panel viewer
+  if (activeElement) {
+    for (let i = viewers.length - 1; i >= 0; i--) {
+      const viewer = viewers[i];
+      if (viewer?.container?.contains?.(activeElement)) {
+        return viewer;
+      }
+    }
+  }
+
+  // 3. Fallback to the most recently registered viewer
+  return viewers[viewers.length - 1];
 }

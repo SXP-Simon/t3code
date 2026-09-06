@@ -18,10 +18,90 @@ import {
   isEditableElement,
   MAX_ZOOM_SCALE,
   MIN_ZOOM_SCALE,
+  selectActiveViewer,
   type Point,
 } from "./zoomableImage.logic";
 
-export function useZoomableImage(src: string) {
+export interface UseZoomableImageOptions {
+  readonly layout?: "dialog" | "panel" | undefined;
+}
+
+interface ViewerRegistration {
+  readonly id: symbol;
+  readonly layout: "dialog" | "panel";
+  readonly containerRef: React.RefObject<HTMLDivElement | null>;
+  readonly handlersRef: React.RefObject<{
+    zoomIn: () => void;
+    zoomOut: () => void;
+    resetTransform: () => void;
+    rotateClockwise: () => void;
+  }>;
+}
+
+const activeViewers: ViewerRegistration[] = [];
+
+function onGlobalKeyDown(event: KeyboardEvent) {
+  if (
+    event.defaultPrevented ||
+    event.ctrlKey ||
+    event.metaKey ||
+    event.altKey ||
+    isEditableElement(event.target)
+  ) {
+    return;
+  }
+
+  const activeViewer = selectActiveViewer(
+    activeViewers.map((v) => ({
+      viewer: v,
+      layout: v.layout,
+      container: v.containerRef.current,
+    })),
+  )?.viewer;
+
+  if (!activeViewer) return;
+
+  const handlers = activeViewer.handlersRef.current;
+  if (!handlers) return;
+
+  if (event.key === "+" || event.key === "=") {
+    event.preventDefault();
+    event.stopPropagation();
+    handlers.zoomIn();
+  } else if (event.key === "-" || event.key === "_") {
+    event.preventDefault();
+    event.stopPropagation();
+    handlers.zoomOut();
+  } else if (event.key === "0") {
+    event.preventDefault();
+    event.stopPropagation();
+    handlers.resetTransform();
+  } else if (event.key === "r" || event.key === "R") {
+    event.preventDefault();
+    event.stopPropagation();
+    handlers.rotateClockwise();
+  }
+}
+
+function registerViewer(registration: ViewerRegistration) {
+  activeViewers.push(registration);
+  if (activeViewers.length === 1 && typeof window !== "undefined") {
+    window.addEventListener("keydown", onGlobalKeyDown);
+  }
+}
+
+function unregisterViewer(registration: ViewerRegistration) {
+  const index = activeViewers.findIndex((v) => v.id === registration.id);
+  if (index !== -1) {
+    activeViewers.splice(index, 1);
+  }
+  if (activeViewers.length === 0 && typeof window !== "undefined") {
+    window.removeEventListener("keydown", onGlobalKeyDown);
+  }
+}
+
+export function useZoomableImage(src: string, options: UseZoomableImageOptions = {}) {
+  const { layout = "dialog" } = options;
   const [scale, setScale] = useState(DEFAULT_ZOOM_SCALE);
   const [position, setPosition] = useState<Point>({ x: 0, y: 0 });
   const [rotation, setRotation] = useState(0);
@@ -181,33 +261,21 @@ export function useZoomableImage(src: string) {
     [position, resetTransform, scale],
   );
 
-  // Keyboard shortcut listeners (+, -, 0, r)
+  const handlersRef = useRef({ zoomIn, zoomOut, resetTransform, rotateClockwise });
+  handlersRef.current = { zoomIn, zoomOut, resetTransform, rotateClockwise };
+
   useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.defaultPrevented || isEditableElement(event.target)) return;
-
-      if (event.key === "+" || event.key === "=") {
-        event.preventDefault();
-        event.stopPropagation();
-        zoomIn();
-      } else if (event.key === "-" || event.key === "_") {
-        event.preventDefault();
-        event.stopPropagation();
-        zoomOut();
-      } else if (event.key === "0") {
-        event.preventDefault();
-        event.stopPropagation();
-        resetTransform();
-      } else if (event.key === "r" || event.key === "R") {
-        event.preventDefault();
-        event.stopPropagation();
-        rotateClockwise();
-      }
+    const registration: ViewerRegistration = {
+      id: Symbol("ZoomableViewer"),
+      layout,
+      containerRef,
+      handlersRef,
     };
-
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [resetTransform, rotateClockwise, zoomIn, zoomOut]);
+    registerViewer(registration);
+    return () => {
+      unregisterViewer(registration);
+    };
+  }, [layout]);
 
   return {
     scale,
