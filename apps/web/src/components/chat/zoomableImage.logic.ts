@@ -55,6 +55,14 @@ export function getNextRotation(currentRotation: number): number {
 }
 
 /**
+ * Returns true if the rotation is 90° or 270° (orthogonal/perpendicular to natural orientation).
+ */
+export function isOrthogonalRotation(rotation: number): boolean {
+  const normalized = ((rotation % 360) + 360) % 360;
+  return normalized === 90 || normalized === 270;
+}
+
+/**
  * Checks if keyboard event targets an editable element.
  */
 export function isEditableElement(target: EventTarget | null): boolean {

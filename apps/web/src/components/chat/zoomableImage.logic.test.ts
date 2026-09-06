@@ -8,6 +8,7 @@ import {
   getNextZoomInScale,
   getNextZoomOutScale,
   isEditableElement,
+  isOrthogonalRotation,
   MAX_ZOOM_SCALE,
   MIN_ZOOM_SCALE,
   selectActiveViewer,
@@ -86,6 +87,18 @@ describe("zoomableImage.logic", () => {
       expect(getNextRotation(90)).toBe(180);
       expect(getNextRotation(180)).toBe(270);
       expect(getNextRotation(270)).toBe(0);
+    });
+  });
+
+  describe("isOrthogonalRotation", () => {
+    it("identifies 90° and 270° as orthogonal rotations", () => {
+      expect(isOrthogonalRotation(0)).toBe(false);
+      expect(isOrthogonalRotation(90)).toBe(true);
+      expect(isOrthogonalRotation(180)).toBe(false);
+      expect(isOrthogonalRotation(270)).toBe(true);
+      expect(isOrthogonalRotation(360)).toBe(false);
+      expect(isOrthogonalRotation(-90)).toBe(true);
+      expect(isOrthogonalRotation(450)).toBe(true);
     });
   });
 

@@ -154,7 +154,7 @@ describe("useZoomableImage keyboard shortcuts & scoping", () => {
   });
 });
 
-describe("ZoomableImageViewer ref and DOM props forwarding", () => {
+describe("ZoomableImageViewer ref, layout & rotation constraints", () => {
   it("forwards ref and spreads DOM props to outer div", async () => {
     const onContextMenu = vi.fn();
     let renderer: ReactTestRenderer | undefined;
@@ -181,5 +181,27 @@ describe("ZoomableImageViewer ref and DOM props forwarding", () => {
     expect(outerDiv.props["data-testid"]).toBe("zoomable-image-viewer");
     expect(outerDiv.props.onContextMenu).toBe(onContextMenu);
     expect(outerDiv.props.className).toContain("overflow-hidden");
+  });
+
+  it("applies rotated max-dimensions in dialog mode when rotated 90 degrees", async () => {
+    let renderer: ReactTestRenderer | undefined;
+
+    await act(() => {
+      renderer = create(
+        <ZoomableImageViewer src="https://example.com/img.png" alt="Test Image" layout="dialog" />,
+      );
+      activeRenderers.push(renderer);
+    });
+
+    const img = renderer!.root.findByType("img");
+    expect(img.props.className).toContain("max-h-[82vh]");
+    expect(img.props.className).toContain("max-w-[92vw]");
+
+    // Rotate 90 degrees
+    await dispatchKeyEvent({ key: "r" });
+
+    const rotatedImg = renderer!.root.findByType("img");
+    expect(rotatedImg.props.className).toContain("max-h-[92vw]");
+    expect(rotatedImg.props.className).toContain("max-w-[82vh]");
   });
 });

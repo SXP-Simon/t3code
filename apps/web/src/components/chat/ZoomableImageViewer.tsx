@@ -1,8 +1,17 @@
-import { forwardRef, memo, type HTMLAttributes, type ReactNode } from "react";
+import {
+  forwardRef,
+  memo,
+  useEffect,
+  useState,
+  type CSSProperties,
+  type HTMLAttributes,
+  type ReactNode,
+} from "react";
 import { MinusIcon, PlusIcon, RotateCwIcon, RotateCcwIcon } from "lucide-react";
 import { Button } from "../ui/button";
 import { cn } from "../../lib/utils";
 import { useZoomableImage } from "./useZoomableImage";
+import { isOrthogonalRotation } from "./zoomableImage.logic";
 
 export interface ZoomableImageViewerProps extends HTMLAttributes<HTMLDivElement> {
   readonly src: string;
@@ -38,7 +47,41 @@ export const ZoomableImageViewer = memo(
       zoomPercentage,
     } = useZoomableImage(src, { layout });
 
+    const [containerSize, setContainerSize] = useState<{ width: number; height: number } | null>(
+      null,
+    );
+
     const isPanel = layout === "panel";
+    const isRotated = isOrthogonalRotation(rotation);
+
+    useEffect(() => {
+      const el = containerRef.current;
+      if (!el || typeof ResizeObserver === "undefined") return;
+
+      const observer = new ResizeObserver((entries) => {
+        const entry = entries[0];
+        if (entry) {
+          const { width, height } = entry.contentRect;
+          if (width > 0 && height > 0) {
+            setContainerSize({ width, height });
+          }
+        }
+      });
+
+      observer.observe(el);
+      return () => observer.disconnect();
+    }, [containerRef]);
+
+    const imgStyle: CSSProperties = {
+      transform: `translate3d(${position.x}px, ${position.y}px, 0) scale(${scale}) rotate(${rotation}deg)`,
+      transition: isDragging ? "none" : "transform 0.15s ease-out",
+      ...(isRotated && containerSize && isPanel
+        ? {
+            maxWidth: `${containerSize.height}px`,
+            maxHeight: `${containerSize.width}px`,
+          }
+        : undefined),
+    };
 
     return (
       <div
@@ -75,12 +118,13 @@ export const ZoomableImageViewer = memo(
             onError={onError}
             className={cn(
               "object-contain select-none will-change-transform",
-              isPanel ? "max-h-full max-w-full" : "max-h-[82vh] max-w-[92vw]",
+              isPanel
+                ? "max-h-full max-w-full"
+                : isRotated
+                  ? "max-h-[92vw] max-w-[82vh]"
+                  : "max-h-[82vh] max-w-[92vw]",
             )}
-            style={{
-              transform: `translate3d(${position.x}px, ${position.y}px, 0) scale(${scale}) rotate(${rotation}deg)`,
-              transition: isDragging ? "none" : "transform 0.15s ease-out",
-            }}
+            style={imgStyle}
           />
         </div>
 
