@@ -333,15 +333,19 @@ export function normalizeAntigravityToolCall(toolCall: AcpToolCallState): AcpToo
     .map((stream) => (typeof stream === "string" && stream.trim().length > 0 ? stream : null))
     .filter((stream): stream is string => stream !== null);
   const combinedStreams = outputStreams.length > 0 ? outputStreams.join("\n") : undefined;
+  const candidateOutputs = [
+    output?.combinedOutput,
+    output?.combined_output,
+    output?.output,
+    output?.formatted_output,
+    output?.formattedOutput,
+    combinedStreams,
+    extractStructuredResultText(output?.result),
+    rawOutputString,
+  ];
   const nativeOutput =
-    output?.combinedOutput ??
-    output?.combined_output ??
-    output?.output ??
-    output?.formatted_output ??
-    output?.formattedOutput ??
-    combinedStreams ??
-    extractStructuredResultText(output?.result) ??
-    rawOutputString;
+    candidateOutputs.find((entry) => typeof entry === "string" && entry.length > 0) ??
+    candidateOutputs.find((entry) => typeof entry === "string");
   const aggregatedOutput = nativeOutput === undefined ? undefined : boundText(nativeOutput);
   const exitCode = output?.exitCode ?? output?.exit_code;
   const imagePath = localImagePath(output?.imagePath);

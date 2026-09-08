@@ -570,5 +570,24 @@ describe("Antigravity tool results", () => {
       aggregatedOutput: "sample inner content\n",
       exitCode: 0,
     });
+
+    const fromEmptyOutputWithStderr = normalizeAntigravityToolCall({
+      toolCallId: "obj-5",
+      kind: "execute",
+      command: "sample-tool",
+      data: {
+        command: "sample-tool",
+        rawOutput: {
+          output: "",
+          stderr: "failure\n",
+          exitCode: 1,
+        },
+      },
+    });
+    expect(fromEmptyOutputWithStderr.data.item).toMatchObject({
+      command: "sample-tool",
+      aggregatedOutput: "failure\n",
+      exitCode: 1,
+    });
   });
 });
