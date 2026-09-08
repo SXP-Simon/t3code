@@ -321,13 +321,17 @@ export function normalizeAntigravityToolCall(toolCall: AcpToolCallState): AcpToo
     output?.working_dir ??
     (typeof toolCall.data.cwd === "string" ? toolCall.data.cwd : undefined);
   const cwd = nativeCwd?.trim() ? boundText(nativeCwd.trim()) : undefined;
+  const outputStreams = [output?.stdout, output?.stderr]
+    .map((stream) => (typeof stream === "string" && stream.trim().length > 0 ? stream : null))
+    .filter((stream): stream is string => stream !== null);
+  const combinedStreams = outputStreams.length > 0 ? outputStreams.join("\n") : undefined;
   const nativeOutput =
     output?.combinedOutput ??
     output?.combined_output ??
     output?.output ??
-    output?.stdout ??
     output?.formatted_output ??
     output?.formattedOutput ??
+    combinedStreams ??
     (typeof output?.result === "string" ? output.result : undefined) ??
     rawOutputString;
   const aggregatedOutput = nativeOutput === undefined ? undefined : boundText(nativeOutput);

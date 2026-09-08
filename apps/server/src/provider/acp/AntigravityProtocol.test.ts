@@ -515,5 +515,24 @@ describe("Antigravity tool results", () => {
       aggregatedOutput: "sample structured output\n",
       exitCode: 0,
     });
+
+    const fromSeparateStreams = normalizeAntigravityToolCall({
+      toolCallId: "obj-2",
+      kind: "execute",
+      command: "sample-tool",
+      data: {
+        command: "sample-tool",
+        rawOutput: {
+          stdout: "stdout line\n",
+          stderr: "stderr warning\n",
+          exitCode: 0,
+        },
+      },
+    });
+    expect(fromSeparateStreams.data.item).toMatchObject({
+      command: "sample-tool",
+      aggregatedOutput: "stdout line\n\nstderr warning\n",
+      exitCode: 0,
+    });
   });
 });
