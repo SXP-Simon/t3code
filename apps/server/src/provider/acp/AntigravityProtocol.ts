@@ -28,6 +28,12 @@ const NativeToolFields = Schema.Struct({
   workingDir: Schema.optional(Schema.String),
   combinedOutput: Schema.optional(Schema.String),
   combined_output: Schema.optional(Schema.String),
+  output: Schema.optional(Schema.String),
+  stdout: Schema.optional(Schema.String),
+  stderr: Schema.optional(Schema.String),
+  result: Schema.optional(Schema.Union([Schema.String, Schema.Unknown])),
+  formatted_output: Schema.optional(Schema.String),
+  formattedOutput: Schema.optional(Schema.String),
   exitCode: Schema.optional(Schema.Int),
   exit_code: Schema.optional(Schema.Int),
   imagePath: Schema.optional(Schema.String),
@@ -293,6 +299,8 @@ function localImagePath(imagePath: string | undefined): string | undefined {
 export function normalizeAntigravityToolCall(toolCall: AcpToolCallState): AcpToolCallState {
   const input = Option.getOrUndefined(decodeNativeToolFields(toolCall.data.rawInput));
   const output = Option.getOrUndefined(decodeNativeToolFields(toolCall.data.rawOutput));
+  const rawOutputString =
+    typeof toolCall.data.rawOutput === "string" ? toolCall.data.rawOutput : undefined;
   const nativeCommand =
     input?.CommandLine ??
     input?.command_line ??
@@ -300,6 +308,7 @@ export function normalizeAntigravityToolCall(toolCall: AcpToolCallState): AcpToo
     input?.command ??
     output?.commandLine ??
     output?.command_line ??
+    (typeof toolCall.data.command === "string" ? toolCall.data.command : undefined) ??
     toolCall.command;
   const command = nativeCommand?.trim() ? boundText(nativeCommand.trim()) : undefined;
   const nativeCwd =
@@ -309,9 +318,18 @@ export function normalizeAntigravityToolCall(toolCall: AcpToolCallState): AcpToo
     input?.workingDir ??
     input?.cwd ??
     output?.workingDir ??
-    output?.working_dir;
+    output?.working_dir ??
+    (typeof toolCall.data.cwd === "string" ? toolCall.data.cwd : undefined);
   const cwd = nativeCwd?.trim() ? boundText(nativeCwd.trim()) : undefined;
-  const nativeOutput = output?.combinedOutput ?? output?.combined_output;
+  const nativeOutput =
+    output?.combinedOutput ??
+    output?.combined_output ??
+    output?.output ??
+    output?.stdout ??
+    output?.formatted_output ??
+    output?.formattedOutput ??
+    (typeof output?.result === "string" ? output.result : undefined) ??
+    rawOutputString;
   const aggregatedOutput = nativeOutput === undefined ? undefined : boundText(nativeOutput);
   const exitCode = output?.exitCode ?? output?.exit_code;
   const imagePath = localImagePath(output?.imagePath);

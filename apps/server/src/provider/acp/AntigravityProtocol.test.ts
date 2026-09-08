@@ -482,4 +482,38 @@ describe("Antigravity tool results", () => {
     );
     expect(isAntigravityOpenCommand(completed)).toBe(false);
   });
+
+  it("extracts output from rawOutput strings and alternative fields", () => {
+    const fromString = normalizeAntigravityToolCall({
+      toolCallId: "str-1",
+      kind: "execute",
+      command: "sample-command",
+      data: {
+        command: "sample-command",
+        rawOutput: "sample direct output\n",
+      },
+    });
+    expect(fromString.data.item).toMatchObject({
+      command: "sample-command",
+      aggregatedOutput: "sample direct output\n",
+    });
+
+    const fromObjectFields = normalizeAntigravityToolCall({
+      toolCallId: "obj-1",
+      kind: "execute",
+      command: "sample-tool",
+      data: {
+        command: "sample-tool",
+        rawOutput: {
+          output: "sample structured output\n",
+          exitCode: 0,
+        },
+      },
+    });
+    expect(fromObjectFields.data.item).toMatchObject({
+      command: "sample-tool",
+      aggregatedOutput: "sample structured output\n",
+      exitCode: 0,
+    });
+  });
 });
