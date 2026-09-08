@@ -189,6 +189,14 @@ function boundText(text: string, limit = TOOL_TEXT_LIMIT): string {
     : copyBoundedText(`${TOOL_TEXT_TRUNCATED}${text.slice(-limit)}`);
 }
 
+function extractStructuredResultText(value: unknown): string | undefined {
+  if (typeof value === "string") return value;
+  if (!Predicate.isObject(value)) return undefined;
+  if (typeof value.content === "string") return value.content;
+  if (typeof value.text === "string") return value.text;
+  return undefined;
+}
+
 interface ToolPayloadBudget {
   nodes: number;
   text: number;
@@ -332,7 +340,7 @@ export function normalizeAntigravityToolCall(toolCall: AcpToolCallState): AcpToo
     output?.formatted_output ??
     output?.formattedOutput ??
     combinedStreams ??
-    (typeof output?.result === "string" ? output.result : undefined) ??
+    extractStructuredResultText(output?.result) ??
     rawOutputString;
   const aggregatedOutput = nativeOutput === undefined ? undefined : boundText(nativeOutput);
   const exitCode = output?.exitCode ?? output?.exit_code;

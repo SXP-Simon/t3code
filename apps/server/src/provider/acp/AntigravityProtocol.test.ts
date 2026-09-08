@@ -534,5 +534,41 @@ describe("Antigravity tool results", () => {
       aggregatedOutput: "stdout line\n\nstderr warning\n",
       exitCode: 0,
     });
+
+    const fromStderrOnly = normalizeAntigravityToolCall({
+      toolCallId: "obj-3",
+      kind: "execute",
+      command: "sample-tool",
+      data: {
+        command: "sample-tool",
+        rawOutput: {
+          stderr: "stderr only message\n",
+          exitCode: 1,
+        },
+      },
+    });
+    expect(fromStderrOnly.data.item).toMatchObject({
+      command: "sample-tool",
+      aggregatedOutput: "stderr only message\n",
+      exitCode: 1,
+    });
+
+    const fromStructuredResultObject = normalizeAntigravityToolCall({
+      toolCallId: "obj-4",
+      kind: "execute",
+      command: "sample-tool",
+      data: {
+        command: "sample-tool",
+        rawOutput: {
+          result: { content: "sample inner content\n" },
+          exitCode: 0,
+        },
+      },
+    });
+    expect(fromStructuredResultObject.data.item).toMatchObject({
+      command: "sample-tool",
+      aggregatedOutput: "sample inner content\n",
+      exitCode: 0,
+    });
   });
 });
