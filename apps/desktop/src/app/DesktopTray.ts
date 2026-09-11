@@ -12,6 +12,9 @@ import * as DesktopEnvironment from "./DesktopEnvironment.ts";
 import { makeComponentLogger } from "./DesktopObservability.ts";
 import * as DesktopWindow from "../window/DesktopWindow.ts";
 
+/**
+ * Error raised when configuring the high-level desktop system tray fails.
+ */
 export class DesktopTrayConfigureError extends Schema.TaggedErrorClass<DesktopTrayConfigureError>()(
   "DesktopTrayConfigureError",
   {
@@ -23,6 +26,9 @@ export class DesktopTrayConfigureError extends Schema.TaggedErrorClass<DesktopTr
   }
 }
 
+/**
+ * High-level service managing tray lifecycle, platform check, and availability status.
+ */
 export class DesktopTray extends Context.Service<
   DesktopTray,
   {
@@ -38,6 +44,9 @@ const {
   logWarning: logTrayWarning,
 } = makeComponentLogger("desktop-tray");
 
+/**
+ * Effect constructor creating the DesktopTray service.
+ */
 export const make = Effect.gen(function* () {
   const environment = yield* DesktopEnvironment.DesktopEnvironment;
   const desktopAssets = yield* DesktopAssets.DesktopAssets;
@@ -122,4 +131,7 @@ export const make = Effect.gen(function* () {
   });
 });
 
+/**
+ * Default live layer for DesktopTray.
+ */
 export const layer = Layer.effect(DesktopTray, make);

@@ -8,6 +8,9 @@ import * as Schema from "effect/Schema";
 
 import * as Electron from "electron";
 
+/**
+ * Error raised when creating the Electron system tray instance fails.
+ */
 export class ElectronTrayCreateError extends Schema.TaggedErrorClass<ElectronTrayCreateError>()(
   "ElectronTrayCreateError",
   {
@@ -20,6 +23,9 @@ export class ElectronTrayCreateError extends Schema.TaggedErrorClass<ElectronTra
   }
 }
 
+/**
+ * Error raised when performing an operation on the system tray fails.
+ */
 export class ElectronTrayOperationError extends Schema.TaggedErrorClass<ElectronTrayOperationError>()(
   "ElectronTrayOperationError",
   {
@@ -33,6 +39,9 @@ export class ElectronTrayOperationError extends Schema.TaggedErrorClass<Electron
   }
 }
 
+/**
+ * Menu item configuration for constructing the tray context menu.
+ */
 export interface ElectronTrayMenuItem {
   readonly label?: string;
   readonly type?: "normal" | "separator" | "submenu" | "checkbox" | "radio";
@@ -41,6 +50,9 @@ export interface ElectronTrayMenuItem {
   readonly submenu?: readonly ElectronTrayMenuItem[];
 }
 
+/**
+ * Options for creating an Electron system tray.
+ */
 export interface ElectronTrayCreateOptions {
   readonly iconPath: string;
   readonly tooltip?: string;
@@ -49,6 +61,9 @@ export interface ElectronTrayCreateOptions {
   readonly onDoubleClick?: () => void;
 }
 
+/**
+ * Low-level service managing Electron's native system tray instance.
+ */
 export class ElectronTray extends Context.Service<
   ElectronTray,
   {
@@ -59,6 +74,9 @@ export class ElectronTray extends Context.Service<
   }
 >()("@t3tools/desktop/electron/ElectronTray") {}
 
+/**
+ * Recursively maps typed menu item descriptors to Electron MenuItemConstructorOptions.
+ */
 const mapMenuItems = (
   items: readonly ElectronTrayMenuItem[],
 ): Electron.MenuItemConstructorOptions[] =>
@@ -72,6 +90,9 @@ const mapMenuItems = (
     return menuItem;
   });
 
+/**
+ * Effect constructor creating the ElectronTray service.
+ */
 export const make = Effect.gen(function* () {
   const platform = yield* HostProcessPlatform;
   const currentTrayRef = yield* Ref.make<Option.Option<Electron.Tray>>(Option.none());
@@ -149,4 +170,7 @@ export const make = Effect.gen(function* () {
   });
 });
 
+/**
+ * Default live layer for ElectronTray.
+ */
 export const layer = Layer.effect(ElectronTray, make);
