@@ -97,22 +97,26 @@ export const make = Effect.gen(function* () {
   const platform = yield* HostProcessPlatform;
   const currentTrayRef = yield* Ref.make<Option.Option<Electron.Tray>>(Option.none());
 
+  const destroyTray = (tray: Electron.Tray) =>
+    Effect.try({
+      try: () => {
+        if (!tray.isDestroyed()) {
+          tray.destroy();
+        }
+      },
+      catch: (cause) =>
+        new ElectronTrayOperationError({
+          operation: "destroy-tray",
+          platform,
+          cause,
+        }),
+    });
+
   const destroy = Effect.gen(function* () {
-    const currentTray = yield* Ref.getAndSet(currentTrayRef, Option.none());
+    const currentTray = yield* Ref.get(currentTrayRef);
     if (Option.isSome(currentTray)) {
-      yield* Effect.try({
-        try: () => {
-          if (!currentTray.value.isDestroyed()) {
-            currentTray.value.destroy();
-          }
-        },
-        catch: (cause) =>
-          new ElectronTrayOperationError({
-            operation: "destroy-tray",
-            platform,
-            cause,
-          }),
-      }).pipe(Effect.orDie);
+      yield* destroyTray(currentTray.value).pipe(Effect.orDie);
+      yield* Ref.set(currentTrayRef, Option.none());
     }
   });
 
@@ -120,47 +124,40 @@ export const make = Effect.gen(function* () {
     Effect.gen(function* () {
       yield* destroy;
 
+      let partialTray: Electron.Tray | undefined;
       const tray = yield* Effect.try({
         try: () => {
-          let partialTray: Electron.Tray | undefined;
-          try {
-            const icon = Electron.nativeImage.createFromPath(options.iconPath);
-            const newTray = new Electron.Tray(icon.isEmpty() ? options.iconPath : icon);
-            partialTray = newTray;
-            if (options.tooltip) {
-              newTray.setToolTip(options.tooltip);
-            }
-            if (options.menuItems && options.menuItems.length > 0) {
-              const template = mapMenuItems(options.menuItems);
-              const contextMenu = Electron.Menu.buildFromTemplate(template);
-              newTray.setContextMenu(contextMenu);
-            }
-            if (options.onClick) {
-              newTray.on("click", options.onClick);
-            }
-            if (options.onDoubleClick) {
-              newTray.on("double-click", options.onDoubleClick);
-            }
-            return newTray;
-          } catch (cause) {
-            if (partialTray && !partialTray.isDestroyed()) {
-              try {
-                partialTray.destroy();
-              } catch {
-                // ignore
-              }
-            }
-            throw cause;
+          const icon = Electron.nativeImage.createFromPath(options.iconPath);
+          const newTray = new Electron.Tray(icon.isEmpty() ? options.iconPath : icon);
+          partialTray = newTray;
+          if (options.tooltip) {
+            newTray.setToolTip(options.tooltip);
           }
+          if (options.menuItems && options.menuItems.length > 0) {
+            const template = mapMenuItems(options.menuItems);
+            const contextMenu = Electron.Menu.buildFromTemplate(template);
+            newTray.setContextMenu(contextMenu);
+          }
+          if (options.onClick) {
+            newTray.on("click", options.onClick);
+          }
+          if (options.onDoubleClick) {
+            newTray.on("double-click", options.onDoubleClick);
+          }
+          return newTray;
         },
         catch: (cause) =>
           new ElectronTrayCreateError({
             iconPath: options.iconPath,
             cause,
           }),
-      });
+      }).pipe(
+        Effect.tap((createdTray) => Ref.set(currentTrayRef, Option.some(createdTray))),
+        Effect.tapError(() =>
+          partialTray ? destroyTray(partialTray).pipe(Effect.orDie) : Effect.void,
+        ),
+      );
 
-      yield* Ref.set(currentTrayRef, Option.some(tray));
       return tray;
     });
 

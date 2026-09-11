@@ -174,4 +174,32 @@ describe("ElectronTray", () => {
       assert.isTrue(trayInstances[0]?.destroyed);
     }).pipe(Effect.provide(TestLayer)),
   );
+
+  it.effect("retains tray reference on failed destruction so cleanup can be retried", () =>
+    Effect.gen(function* () {
+      const electronTray = yield* ElectronTray.ElectronTray;
+
+      yield* electronTray.create({ iconPath: "icon1.ico" });
+      const instance = trayInstances[0];
+      assert.isDefined(instance);
+
+      let shouldThrow = true;
+      const originalDestroy = instance.destroy;
+      instance.destroy = () => {
+        if (shouldThrow) {
+          throw new Error("Native destruction failure");
+        }
+        originalDestroy.call(instance);
+      };
+
+      const failure = yield* electronTray.destroy.pipe(Effect.exit);
+      assert.isTrue(failure._tag === "Failure");
+      assert.isFalse(instance.destroyed);
+
+      // Subsequent destroy retry succeeds
+      shouldThrow = false;
+      yield* electronTray.destroy;
+      assert.isTrue(instance.destroyed);
+    }).pipe(Effect.provide(TestLayer)),
+  );
 });

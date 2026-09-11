@@ -44,78 +44,99 @@ const makeElectronTrayLayer = (
     destroy: Effect.void,
   } satisfies ElectronTray.ElectronTray["Service"]);
 
-const electronAppLayer = Layer.succeed(ElectronApp.ElectronApp, {
-  metadata: Effect.die("unexpected metadata read"),
-  name: Effect.succeed("T3 Code"),
-  systemLocale: Effect.succeed("en-US"),
-  whenReady: Effect.void,
-  quit: Effect.void,
-  exit: () => Effect.void,
-  relaunch: () => Effect.void,
-  setPath: () => Effect.void,
-  setName: () => Effect.void,
-  setAboutPanelOptions: () => Effect.void,
-  setAppUserModelId: () => Effect.void,
-  getAppMetrics: Effect.succeed([]),
-  isDefaultProtocolClient: () => Effect.succeed(false),
-  setAsDefaultProtocolClient: () => Effect.succeed(true),
-  setDesktopName: () => Effect.void,
-  setDockIcon: () => Effect.void,
-  appendCommandLineSwitch: () => Effect.void,
-  onBeforeQuitForUpdate: () => Effect.void,
-  removeCommandLineSwitch: () => Effect.void,
-  on: () => Effect.void,
-} satisfies ElectronApp.ElectronApp["Service"]);
+const makeElectronAppLayer = (onQuit?: () => Effect.Effect<void>) =>
+  Layer.succeed(ElectronApp.ElectronApp, {
+    metadata: Effect.die("unexpected metadata read"),
+    name: Effect.succeed("T3 Code"),
+    systemLocale: Effect.succeed("en-US"),
+    whenReady: Effect.void,
+    quit: onQuit ? onQuit() : Effect.void,
+    exit: () => Effect.void,
+    relaunch: () => Effect.void,
+    setPath: () => Effect.void,
+    setName: () => Effect.void,
+    setAboutPanelOptions: () => Effect.void,
+    setAppUserModelId: () => Effect.void,
+    getAppMetrics: Effect.succeed([]),
+    isDefaultProtocolClient: () => Effect.succeed(false),
+    setAsDefaultProtocolClient: () => Effect.succeed(true),
+    setDesktopName: () => Effect.void,
+    setDockIcon: () => Effect.void,
+    appendCommandLineSwitch: () => Effect.void,
+    onBeforeQuitForUpdate: () => Effect.void,
+    removeCommandLineSwitch: () => Effect.void,
+    on: () => Effect.void,
+  } satisfies ElectronApp.ElectronApp["Service"]);
 
-const desktopWindowLayer = Layer.succeed(DesktopWindow.DesktopWindow, {
-  createMain: Effect.die("unexpected createMain"),
-  ensureMain: Effect.die("unexpected ensureMain"),
-  revealOrCreateMain: Effect.die("unexpected revealOrCreateMain"),
-  activate: Effect.void,
-  createMainIfBackendReady: Effect.void,
-  showConnectingSplash: Effect.void,
-  handleBackendReady: () => Effect.void,
-  handleBackendNotReady: Effect.void,
-  flushMainWindowBounds: Effect.void,
-  prepareCaptureReveal: Effect.void,
-  dispatchMenuAction: () => Effect.void,
-  dispatchSnapShotEvent: () => Effect.void,
-  zoomMain: () => Effect.void,
-  syncAppearance: Effect.void,
-} satisfies DesktopWindow.DesktopWindow["Service"]);
+const makeDesktopWindowLayer = (onRevealOrCreateMain?: () => Effect.Effect<void>) =>
+  Layer.succeed(DesktopWindow.DesktopWindow, {
+    createMain: Effect.die("unexpected createMain"),
+    ensureMain: Effect.die("unexpected ensureMain"),
+    revealOrCreateMain: onRevealOrCreateMain ? onRevealOrCreateMain() : Effect.succeed({} as any),
+    activate: Effect.void,
+    createMainIfBackendReady: Effect.void,
+    showConnectingSplash: Effect.void,
+    handleBackendReady: () => Effect.void,
+    handleBackendNotReady: Effect.void,
+    flushMainWindowBounds: Effect.void,
+    prepareCaptureReveal: Effect.void,
+    dispatchMenuAction: () => Effect.void,
+    dispatchSnapShotEvent: () => Effect.void,
+    zoomMain: () => Effect.void,
+    syncAppearance: Effect.void,
+  } satisfies DesktopWindow.DesktopWindow["Service"]);
 
 describe("DesktopTray", () => {
-  it.effect("configures tray icon and menu on win32", () =>
-    Effect.gen(function* () {
-      const createdOptions = yield* Deferred.make<ElectronTray.ElectronTrayCreateOptions>();
-      const testLayer = DesktopTray.layer.pipe(
-        Layer.provideMerge(makeElectronTrayLayer(createdOptions)),
-        Layer.provideMerge(desktopAssetsLayer),
-        Layer.provideMerge(makeEnvironmentLayer("win32")),
-        Layer.provideMerge(electronAppLayer),
-        Layer.provideMerge(desktopWindowLayer),
-        Layer.provideMerge(NodeServices.layer),
-      );
+  it.effect(
+    "configures tray icon and menu on win32 and invokes revealOrCreateMain on open actions",
+    () =>
+      Effect.gen(function* () {
+        const createdOptions = yield* Deferred.make<ElectronTray.ElectronTrayCreateOptions>();
+        const clickDeferred = yield* Deferred.make<void>();
+        const quitDeferred = yield* Deferred.make<void>();
 
-      yield* Effect.scoped(
-        Effect.gen(function* () {
-          const tray = yield* DesktopTray.DesktopTray;
-          assert.isFalse(yield* tray.isAvailable);
+        const testLayer = DesktopTray.layer.pipe(
+          Layer.provideMerge(makeElectronTrayLayer(createdOptions)),
+          Layer.provideMerge(desktopAssetsLayer),
+          Layer.provideMerge(makeEnvironmentLayer("win32")),
+          Layer.provideMerge(
+            makeElectronAppLayer(() => Deferred.succeed(quitDeferred, void 0).pipe(Effect.asVoid)),
+          ),
+          Layer.provideMerge(
+            makeDesktopWindowLayer(() =>
+              Deferred.succeed(clickDeferred, void 0).pipe(Effect.asVoid),
+            ),
+          ),
+          Layer.provideMerge(NodeServices.layer),
+        );
 
-          yield* tray.configure;
+        yield* Effect.scoped(
+          Effect.gen(function* () {
+            const tray = yield* DesktopTray.DesktopTray;
+            assert.isFalse(yield* tray.isAvailable);
 
-          const options = yield* Deferred.await(createdOptions);
-          assert.equal(options.iconPath, "C:/path/to/icon.ico");
-          assert.equal(options.tooltip, "T3 Code");
-          assert.isDefined(options.menuItems);
-          const menuItems = options.menuItems ?? [];
-          assert.equal(menuItems.length, 3);
-          assert.equal(menuItems[0]?.label, "Open T3 Code");
-          assert.equal(menuItems[2]?.label, "Quit T3 Code");
-          assert.isTrue(yield* tray.isAvailable);
-        }),
-      ).pipe(Effect.provide(testLayer));
-    }),
+            yield* tray.configure;
+
+            const options = yield* Deferred.await(createdOptions);
+            assert.equal(options.iconPath, "C:/path/to/icon.ico");
+            assert.equal(options.tooltip, "T3 Code");
+            assert.isDefined(options.menuItems);
+            const menuItems = options.menuItems ?? [];
+            assert.equal(menuItems.length, 3);
+            assert.equal(menuItems[0]?.label, "Open T3 Code");
+            assert.equal(menuItems[2]?.label, "Quit T3 Code");
+            assert.isTrue(yield* tray.isAvailable);
+
+            // Click on tray invokes revealOrCreateMain
+            options.onClick?.();
+            yield* Deferred.await(clickDeferred);
+
+            // Click on Quit invokes electronApp.quit
+            menuItems[2]?.click?.();
+            yield* Deferred.await(quitDeferred);
+          }),
+        ).pipe(Effect.provide(testLayer));
+      }),
   );
 
   it.effect("skips configuring tray on darwin", () =>
@@ -125,8 +146,8 @@ describe("DesktopTray", () => {
         Layer.provideMerge(makeElectronTrayLayer(createdOptions)),
         Layer.provideMerge(desktopAssetsLayer),
         Layer.provideMerge(makeEnvironmentLayer("darwin")),
-        Layer.provideMerge(electronAppLayer),
-        Layer.provideMerge(desktopWindowLayer),
+        Layer.provideMerge(makeElectronAppLayer()),
+        Layer.provideMerge(makeDesktopWindowLayer()),
         Layer.provideMerge(NodeServices.layer),
       );
 

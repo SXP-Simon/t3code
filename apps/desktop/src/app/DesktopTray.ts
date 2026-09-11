@@ -85,16 +85,16 @@ export const make = Effect.gen(function* () {
       iconPath,
       tooltip: environment.displayName,
       onClick: () => {
-        void runPromise(desktopWindow.activate);
+        void runPromise(desktopWindow.revealOrCreateMain);
       },
       onDoubleClick: () => {
-        void runPromise(desktopWindow.activate);
+        void runPromise(desktopWindow.revealOrCreateMain);
       },
       menuItems: [
         {
           label: `Open ${environment.displayName}`,
           click: () => {
-            void runPromise(desktopWindow.activate);
+            void runPromise(desktopWindow.revealOrCreateMain);
           },
         },
         {
