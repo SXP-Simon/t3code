@@ -154,4 +154,24 @@ describe("ElectronTray", () => {
       assert.isFalse(trayInstances[1]?.destroyed);
     }).pipe(Effect.provide(TestLayer)),
   );
+
+  it.effect("cleans up partial tray if menu building fails during creation", () =>
+    Effect.gen(function* () {
+      const electronTray = yield* ElectronTray.ElectronTray;
+      buildFromTemplateMock.mockImplementationOnce(() => {
+        throw new Error("Menu template build failure");
+      });
+
+      const result = yield* electronTray
+        .create({
+          iconPath: "C:/path/to/icon.ico",
+          menuItems: [{ label: "Invalid Item" }],
+        })
+        .pipe(Effect.flip);
+
+      assert.instanceOf(result, ElectronTray.ElectronTrayCreateError);
+      assert.equal(trayInstances.length, 1);
+      assert.isTrue(trayInstances[0]?.destroyed);
+    }).pipe(Effect.provide(TestLayer)),
+  );
 });

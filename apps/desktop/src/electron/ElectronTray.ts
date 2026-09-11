@@ -101,23 +101,36 @@ export const make = Effect.gen(function* () {
 
       const tray = yield* Effect.try({
         try: () => {
-          const icon = Electron.nativeImage.createFromPath(options.iconPath);
-          const newTray = new Electron.Tray(icon.isEmpty() ? options.iconPath : icon);
-          if (options.tooltip) {
-            newTray.setToolTip(options.tooltip);
+          let partialTray: Electron.Tray | undefined;
+          try {
+            const icon = Electron.nativeImage.createFromPath(options.iconPath);
+            const newTray = new Electron.Tray(icon.isEmpty() ? options.iconPath : icon);
+            partialTray = newTray;
+            if (options.tooltip) {
+              newTray.setToolTip(options.tooltip);
+            }
+            if (options.menuItems && options.menuItems.length > 0) {
+              const template = mapMenuItems(options.menuItems);
+              const contextMenu = Electron.Menu.buildFromTemplate(template);
+              newTray.setContextMenu(contextMenu);
+            }
+            if (options.onClick) {
+              newTray.on("click", options.onClick);
+            }
+            if (options.onDoubleClick) {
+              newTray.on("double-click", options.onDoubleClick);
+            }
+            return newTray;
+          } catch (cause) {
+            if (partialTray && !partialTray.isDestroyed()) {
+              try {
+                partialTray.destroy();
+              } catch {
+                // ignore
+              }
+            }
+            throw cause;
           }
-          if (options.menuItems && options.menuItems.length > 0) {
-            const template = mapMenuItems(options.menuItems);
-            const contextMenu = Electron.Menu.buildFromTemplate(template);
-            newTray.setContextMenu(contextMenu);
-          }
-          if (options.onClick) {
-            newTray.on("click", options.onClick);
-          }
-          if (options.onDoubleClick) {
-            newTray.on("double-click", options.onDoubleClick);
-          }
-          return newTray;
         },
         catch: (cause) =>
           new ElectronTrayCreateError({
