@@ -11,7 +11,7 @@ import * as Electron from "electron";
 /**
  * Error raised when creating the Electron system tray instance fails.
  */
-export class ElectronTrayCreateError extends Schema.TaggedErrorClass<ElectronTrayCreateError>()(
+export class ElectronTrayCreateError extends Schema.TaggedError<ElectronTrayCreateError>()(
   "ElectronTrayCreateError",
   {
     iconPath: Schema.String,
@@ -26,7 +26,7 @@ export class ElectronTrayCreateError extends Schema.TaggedErrorClass<ElectronTra
 /**
  * Error raised when performing an operation on the system tray fails.
  */
-export class ElectronTrayOperationError extends Schema.TaggedErrorClass<ElectronTrayOperationError>()(
+export class ElectronTrayOperationError extends Schema.TaggedError<ElectronTrayOperationError>()(
   "ElectronTrayOperationError",
   {
     operation: Schema.String,

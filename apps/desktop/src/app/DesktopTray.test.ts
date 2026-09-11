@@ -77,7 +77,9 @@ const desktopWindowLayer = Layer.succeed(DesktopWindow.DesktopWindow, {
   handleBackendReady: () => Effect.void,
   handleBackendNotReady: Effect.void,
   flushMainWindowBounds: Effect.void,
+  prepareCaptureReveal: Effect.void,
   dispatchMenuAction: () => Effect.void,
+  dispatchSnapShotEvent: () => Effect.void,
   zoomMain: () => Effect.void,
   syncAppearance: Effect.void,
 } satisfies DesktopWindow.DesktopWindow["Service"]);

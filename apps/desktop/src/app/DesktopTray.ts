@@ -15,7 +15,7 @@ import * as DesktopWindow from "../window/DesktopWindow.ts";
 /**
  * Error raised when configuring the high-level desktop system tray fails.
  */
-export class DesktopTrayConfigureError extends Schema.TaggedErrorClass<DesktopTrayConfigureError>()(
+export class DesktopTrayConfigureError extends Schema.TaggedError<DesktopTrayConfigureError>()(
   "DesktopTrayConfigureError",
   {
     cause: Schema.Defect(),
