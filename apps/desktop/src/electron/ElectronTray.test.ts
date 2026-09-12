@@ -202,4 +202,45 @@ describe("ElectronTray", () => {
       assert.isTrue(instance.destroyed);
     }).pipe(Effect.provide(TestLayer)),
   );
+
+  it.effect(
+    "retains partial tray in currentTrayRef and preserves create error when cleanup fails",
+    () =>
+      Effect.gen(function* () {
+        const electronTray = yield* ElectronTray.ElectronTray;
+
+        let shouldThrow = true;
+        buildFromTemplateMock.mockImplementationOnce(() => {
+          const instance = trayInstances[0];
+          if (instance) {
+            const originalDestroy = instance.destroy;
+            instance.destroy = () => {
+              if (shouldThrow) {
+                throw new Error("Cleanup destruction failure");
+              }
+              originalDestroy.call(instance);
+            };
+          }
+          throw new Error("Menu template build failure");
+        });
+
+        const result = yield* electronTray
+          .create({
+            iconPath: "C:/path/to/icon.ico",
+            menuItems: [{ label: "Invalid Item" }],
+          })
+          .pipe(Effect.flip);
+
+        assert.instanceOf(result, ElectronTray.ElectronTrayCreateError);
+        assert.equal(trayInstances.length, 1);
+        const instance = trayInstances[0];
+        assert.isDefined(instance);
+        assert.isFalse(instance.destroyed);
+
+        // Subsequent destroy retry successfully cleans up the partial tray
+        shouldThrow = false;
+        yield* electronTray.destroy;
+        assert.isTrue(instance.destroyed);
+      }).pipe(Effect.provide(TestLayer)),
+  );
 });

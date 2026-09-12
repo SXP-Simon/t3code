@@ -153,9 +153,14 @@ export const make = Effect.gen(function* () {
           }),
       }).pipe(
         Effect.tap((createdTray) => Ref.set(currentTrayRef, Option.some(createdTray))),
-        Effect.tapError(() =>
-          partialTray ? destroyTray(partialTray).pipe(Effect.orDie) : Effect.void,
-        ),
+        Effect.tapError(() => {
+          const target = partialTray;
+          return target
+            ? destroyTray(target).pipe(
+                Effect.catch(() => Ref.set(currentTrayRef, Option.some(target))),
+              )
+            : Effect.void;
+        }),
       );
 
       return tray;
